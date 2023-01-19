@@ -1,84 +1,124 @@
 package practice2;
 
-import java.util.Scanner;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.function.Consumer;
-
+import java.util.function.IntBinaryOperator;
 
 public class I {
-    public static void main(String... args) {
-        Scanner in = new Scanner(System.in);
-        String s = in.next();
-        int[] sa = StringAlgorithm.suffixArray(s.toCharArray());
-        int[] lcp = StringAlgorithm.lcpArray(s.toCharArray(), sa);
-        int n = s.length();
-        long ans = (long) n * (n + 1) / 2;
-        for (int v : lcp) {
-            ans -= v;
+    public static void main(String[] args) throws Exception {
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+        char[] s = br.readLine().toCharArray();
+        br.close();
+
+        long n = s.length;
+        int[] sa = StringAC.suffixArray(s);
+        int[] la = StringAC.lcpArray(s, sa);
+        long ans = n * (n + 1) / 2;
+        for (int x : la) {
+            ans -= x;
         }
         System.out.println(ans);
     }
 }
-class StringAlgorithm {
-    private static int[] saNaive(int[] s) {
+
+class StringAC {
+    private static final int THRESHOLD_NAIVE = 50;
+
+    public static int[] suffixArray(char[] s) {
         int n = s.length;
-        Integer[] _sa = new Integer[n];
+        int[] s2 = new int[n];
         for (int i = 0; i < n; i++) {
-            _sa[i] = i;
+            s2[i] = s[i];
         }
-        Arrays.sort(_sa, (l, r) -> {
-            while (l < n && r < n) {
-                if (s[l] != s[r]) return s[l] - s[r];
-                l++;
-                r++;
-            }
-            return -(l - r);
-        });
-        int[] sa = new int[n];
-        for (int i = 0; i < n; i++) {
-            sa[i] = _sa[i];
-        }
-        return sa;
+        return sais(s2, 255);
     }
 
-    private static int[] saDoubling(int[] s) {
+    public static int[] suffixArray(int[] s) {
         int n = s.length;
-        Integer[] _sa = new Integer[n];
-        for (int i = 0; i < n; i++) {
-            _sa[i] = i;
-        }
-        int[] rnk = s;
-        int[] tmp = new int[n];
-
-        for (int k = 1; k < n; k *= 2) {
-            final int _k = k;
-            final int[] _rnk = rnk;
-            Comparator<Integer> cmp = (x, y) -> {
-                if (_rnk[x] != _rnk[y]) return _rnk[x] - _rnk[y];
-                int rx = x + _k < n ? _rnk[x + _k] : -1;
-                int ry = y + _k < n ? _rnk[y + _k] : -1;
-                return rx - ry;
-            };
-            Arrays.sort(_sa, cmp);
-            tmp[_sa[0]] = 0;
-            for (int i = 1; i < n; i++) {
-                tmp[_sa[i]] = tmp[_sa[i - 1]] + (cmp.compare(_sa[i - 1], _sa[i]) < 0 ? 1 : 0);
+        int[] vals = Arrays.copyOf(s, n);
+        Arrays.sort(vals);
+        int p = 1;
+        for (int i = 1; i < n; i++) {
+            if (vals[i] != vals[i - 1]) {
+                vals[p++] = vals[i];
             }
-            int[] buf = tmp;
-            tmp = rnk;
-            rnk = buf;
         }
-
-        int[] sa = new int[n];
+        int[] s2 = new int[n];
         for (int i = 0; i < n; i++) {
-            sa[i] = _sa[i];
+            s2[i] = Arrays.binarySearch(vals, 0, p, s[i]);
         }
-        return sa;
+        return sais(s2, p);
     }
 
-    private static final int THRESHOLD_NAIVE = 10;
-    private static final int THRESHOLD_DOUBLING = 40;
+    public static int[] suffixArray(int[] s, int upper) {
+        assert (0 <= upper);
+        for (int d : s) {
+            assert (0 <= d && d <= upper) : "d=" + d + ", upper=" + upper;
+        }
+        return sais(s, upper);
+    }
+
+    public static int[] lcpArray(char[] s, int[] sa) {
+        int n = s.length;
+        int[] s2 = new int[n];
+        for (int i = 0; i < n; i++) {
+            s2[i] = s[i];
+        }
+        return lcpArray(s2, sa);
+    }
+
+    public static int[] lcpArray(int[] s, int[] sa) {
+        int n = s.length;
+        assert (n >= 1);
+        int[] rnk = new int[n];
+        for (int i = 0; i < n; i++) {
+            rnk[sa[i]] = i;
+        }
+        int[] lcp = new int[n - 1];
+        int h = 0;
+        for (int i = 0; i < n; i++) {
+            if (h > 0) h--;
+            if (rnk[i] == 0) {
+                continue;
+            }
+            int j = sa[rnk[i] - 1];
+            for (; j + h < n && i + h < n; h++) {
+                if (s[j + h] != s[i + h]) break;
+            }
+            lcp[rnk[i] - 1] = h;
+        }
+        return lcp;
+    }
+
+    public static int[] zAlgorithm(char[] s) {
+        int n = s.length;
+        if (n == 0) return new int[0];
+        int[] z = new int[n];
+        for (int i = 1, j = 0; i < n; i++) {
+            int k = j + z[j] <= i ? 0 : Math.min(j + z[j] - i, z[i - j]);
+            while (i + k < n && s[k] == s[i + k]) k++;
+            z[i] = k;
+            if (j + z[j] < i + z[i]) j = i;
+        }
+        z[0] = n;
+        return z;
+    }
+
+    public static int[] zAlgorithm(int[] s) {
+        int n = s.length;
+        if (n == 0) return new int[0];
+        int[] z = new int[n];
+        for (int i = 1, j = 0; i < n; i++) {
+            int k = j + z[j] <= i ? 0 : Math.min(j + z[j] - i, z[i - j]);
+            while (i + k < n && s[k] == s[i + k]) k++;
+            z[i] = k;
+            if (j + z[j] < i + z[i]) j = i;
+        }
+        z[0] = n;
+        return z;
+    }
 
     private static int[] sais(int[] s, int upper) {
         int n = s.length;
@@ -93,9 +133,6 @@ class StringAlgorithm {
         }
         if (n < THRESHOLD_NAIVE) {
             return saNaive(s);
-        }
-        if (n < THRESHOLD_DOUBLING) {
-            return saDoubling(s);
         }
 
         int[] sa = new int[n];
@@ -209,44 +246,35 @@ class StringAlgorithm {
         return sa;
     }
 
-    public static int[] suffixArray(char[] s) {
+    private static int[] saNaive(int[] s) {
         int n = s.length;
-        int[] s2 = new int[n];
+        int[] sa = new int[n];
         for (int i = 0; i < n; i++) {
-            s2[i] = s[i];
+            sa[i] = i;
         }
-        return sais(s2, 255);
+        insertionsort(sa, (l, r) -> {
+            while (l < n && r < n) {
+                if (s[l] != s[r]) return s[l] - s[r];
+                l++;
+                r++;
+            }
+            return -(l - r);
+        });
+        return sa;
     }
 
-    public static int[] lcpArray(int[] s, int[] sa) {
-        int n = s.length;
-        assert (n >= 1);
-        int[] rnk = new int[n];
-        for (int i = 0; i < n; i++) {
-            rnk[sa[i]] = i;
-        }
-        int[] lcp = new int[n - 1];
-        int h = 0;
-        for (int i = 0; i < n; i++) {
-            if (h > 0) h--;
-            if (rnk[i] == 0) {
-                continue;
+    private static void insertionsort(int[] a, IntBinaryOperator comparator) {
+        final int n = a.length;
+        for (int i = 1; i < n; i++) {
+            final int tmp = a[i];
+            if (comparator.applyAsInt(a[i - 1], tmp) > 0) {
+                int j = i;
+                do {
+                    a[j] = a[j - 1];
+                    j--;
+                } while (j > 0 && comparator.applyAsInt(a[j - 1], tmp) > 0);
+                a[j] = tmp;
             }
-            int j = sa[rnk[i] - 1];
-            for (; j + h < n && i + h < n; h++) {
-                if (s[j + h] != s[i + h]) break;
-            }
-            lcp[rnk[i] - 1] = h;
         }
-        return lcp;
-    }
-
-    public static int[] lcpArray(char[] s, int[] sa) {
-        int n = s.length;
-        int[] s2 = new int[n];
-        for (int i = 0; i < n; i++) {
-            s2[i] = s[i];
-        }
-        return lcpArray(s2, sa);
     }
 }
