@@ -30,7 +30,6 @@ public class C {
                 break;
             }
         }
-
     }
 
     static int readInt() throws Exception {
