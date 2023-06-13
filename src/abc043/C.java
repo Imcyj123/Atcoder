@@ -6,11 +6,12 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class C {
-    final static BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+    static BufferedReader in;
     static int r, ret;
     static boolean negative = false;
 
     public static void main(String[] args) throws Exception {
+        in = new BufferedReader(new InputStreamReader(System.in));
         int N = Integer.parseInt(in.readLine());
         int[] a = new int[N];
         for (int i = 0; i < N; i++) a[i] = readInt();
